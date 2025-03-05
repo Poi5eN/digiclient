@@ -190,7 +190,6 @@
 
 // export default ImageCropperDemo;
 
-
 import React, { useState, useCallback, useEffect } from "react";
 import { Camera } from "lucide-react";
 import Cropper from "react-easy-crop";
@@ -207,7 +206,7 @@ import moment from "moment";
 import { useStateContext } from "../../../contexts/ContextProvider";
 
 function DynamicFormFileds(props) {
-   const { currentColor ,isLoader,setIsLoader} = useStateContext();
+  const { currentColor, isLoader, setIsLoader } = useStateContext();
   const [getClass, setGetClass] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
@@ -235,14 +234,14 @@ function DynamicFormFileds(props) {
     transport: "",
     remarks: "",
   });
-console.log("values",values)
+  console.log("values", values);
   useEffect(() => {
     const classes = JSON.parse(localStorage.getItem("classes"));
     setGetClass(classes);
   }, []);
 
-  console.log("studentData studentData",studentData)
-  console.log("value",values)
+  console.log("studentData studentData", studentData);
+  console.log("value", values);
   useEffect(() => {
     if (studentData) {
       setIsEdit(true);
@@ -256,68 +255,71 @@ console.log("values",values)
         fatherImage: studentData?.fatherImage || null,
         motherImage: studentData?.motherImage || null,
         guardianImage: studentData?.guardianImage || null,
-        DOB:   moment(studentData?.dateOfBirth).format("YYYY-MMM-DD") || null,
+        DOB: moment(studentData?.dateOfBirth).format("YYYY-MMM-DD") || null,
       }));
     }
   }, [studentData]);
 
   const schoolID = localStorage.getItem("SchoolID");
 
-  const handleImageChange = (e) => {
+  const handleImageChange = (e, photoType) => {
     const file = e.target.files[0];
     if (file) {
-      setValues({
-        ...values,
-        studentImage: file,
-      });
+      setCurrentPhotoType(photoType);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCroppedImageSource(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
   const isValidEmail = (email) => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
-  
+
   const generateEmail = (name, contact) => {
     let emailPrefix = name.toLowerCase();
     emailPrefix = emailPrefix.replace(/[^a-z0-9]/g, "");
     const email = `${emailPrefix}${contact}@gmail.com`;
     return email;
   };
-  
+
   const handleSaveClick = async () => {
     const requiredFields = [
       { key: "fullName", message: "Please Enter Name" },
       { key: "contact", message: "Please Enter Contact" },
       { key: "fatherName", message: "Please Enter Father Name" },
     ];
-  
+
     let missingFields = [];
     for (const field of requiredFields) {
       if (!values?.[field.key]) {
         missingFields.push(field.message);
       }
     }
-  
+
     if (missingFields.length > 0) {
       toast.warn(missingFields.join(", "));
       return;
     }
-  
+
     if (!selectedClass) {
       toast.warn("Please Enter Class");
       return;
     }
-  
-    const contactRegex = /^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$/;
+
+    const contactRegex =
+      /^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$/;
     if (!contactRegex.test(values.contact)) {
       toast.warn("Please enter a valid contact number.");
       return;
     }
-  
+
     // Use the generateEmail function
     const studentEmail = generateEmail(values.fullName, values.contact);
     const parentEmail = generateEmail(values.fatherName, values.contact);
-  
+
     if (!isValidEmail(studentEmail)) {
       toast.warn("Please enter a valid student email format.");
       return;
@@ -326,16 +328,16 @@ console.log("values",values)
       toast.warn("Please enter a valid parent email format.");
       return;
     }
-  
+
     setLoading(true);
-    setIsLoader(true)
-  
+    setIsLoader(true);
+
     try {
       const studentData = {
         schoolId: schoolID,
         studentFullName: values?.fullName || "",
         studentEmail: studentEmail, // Use generated email
-        parentEmail: parentEmail,   // Use generated email
+        parentEmail: parentEmail, // Use generated email
         studentPassword: values?.contact || "",
         parentPassword: values?.contact || "",
         studentDateOfBirth: moment(values?.DOB).format("DD-MMM-YYYY") || "",
@@ -348,19 +350,19 @@ console.log("values",values)
         parentContact: values?.contact || "",
         fatherName: values?.fatherName || "",
         motherName: values?.motherName || "",
-        guardianName: values?.guardianName || "",
+        guardian_name: values?.guardianName || "",
         studentAdmissionNumber: values?.admissionNumber || "",
         studentRollNo: values?.rollNo || "",
         remarks: values?.remarks || "",
         transport: values?.transport || "",
       };
-  
+
       const formDataToSend = new FormData();
-  
+
       Object.entries(studentData).forEach(([key, value]) => {
         formDataToSend.append(key, String(value));
       });
-  
+
       if (values.studentImage) {
         formDataToSend.append("studentImage", values.studentImage);
       }
@@ -373,11 +375,11 @@ console.log("values",values)
       if (values.guardianImage) {
         formDataToSend.append("guardianImage", values.guardianImage);
       }
-  
+
       const response = await Admission(formDataToSend);
-  
+
       if (response.success) {
-        setIsLoader(false)
+        setIsLoader(false);
         setValues({
           admissionNumber: "",
           fullName: "",
@@ -400,6 +402,7 @@ console.log("values",values)
         setReRender(true);
         setIsOpen(false);
       } else {
+        setIsLoader(false);
         toast.error(response?.data?.message);
       }
     } catch (error) {
@@ -413,15 +416,16 @@ console.log("values",values)
       }
     } finally {
       setLoading(false);
+      setIsLoader(false);
     }
   };
 
   const handleUpDateClick = async () => {
-    setIsLoader(true)
+    setIsLoader(true);
     setReRender(false);
     setLoading(true);
     const studentId = studentData?._id;
-  
+
     try {
       const studentDataForUpdate = {
         schoolId: schoolID,
@@ -442,13 +446,13 @@ console.log("values",values)
         studentAdmissionNumber: values?.admissionNumber || "",
         remarks: values?.remarks || "", // Assuming this maps to udisePlusDetails or another field if needed
       };
-  
+
       const formDataToSend = new FormData();
-  
+
       Object.entries(studentDataForUpdate).forEach(([key, value]) => {
         formDataToSend.append(key, String(value));
       });
-  
+
       // Conditionally append image files to FormData
       if (values.studentImage instanceof File) {
         formDataToSend.append("studentImage", values.studentImage);
@@ -462,20 +466,23 @@ console.log("values",values)
       if (values.guardianImage instanceof File) {
         formDataToSend.append("guardianImage", values.guardianImage);
       }
-  
+
       // Update API call to match editAdmission endpoint
-      const response = await fetch(`https://eserver-i5sm.onrender.com/api/v1/thirdparty/admissions/${studentId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`, // Adjust based on your auth setup
-        },
-        body: formDataToSend,
-      });
-  
+      const response = await fetch(
+        `https://eserver-i5sm.onrender.com/api/v1/thirdparty/admissions/${studentId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Adjust based on your auth setup
+          },
+          body: formDataToSend,
+        }
+      );
+
       const result = await response.json();
-  
+
       if (result.success) {
-        setIsLoader(false)
+        setIsLoader(false);
         setReRender(true);
         setIsOpen(false);
         toast.success("Update successfully!");
@@ -505,10 +512,8 @@ console.log("values",values)
       // toast.error("An error occurred during update.");
     } finally {
       setLoading(false);
-    }}
-
-  
-
+    }
+  };
   const [modalOpen, setModalOpen] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -516,38 +521,36 @@ console.log("values",values)
   const [croppedImageSource, setCroppedImageSource] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentPhotoType, setCurrentPhotoType] = useState(null);
-
-  // const handleInputChange = (e) => {
-  //   const { name, value } = e.target;
-  //   setValues((prev) => ({
-  //     ...prev,
-  //     [name]: value,
-  //   }));
-  // };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
     // Auto-format to YYYY-MM-DD if valid
     if (name === "dateOfBirth") {
       // Allow typing & validate date
-      const formattedDate = moment(value, ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"], true);
+      const formattedDate = moment(
+        value,
+        ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"],
+        true
+      );
 
       setValues({
         ...values,
-        [name]: formattedDate.isValid() ? formattedDate.format("YYYY-MM-DD") : value,
+        [name]: formattedDate.isValid()
+          ? formattedDate.format("YYYY-MM-DD")
+          : value,
       });
     } else {
       setValues({ ...values, [name]: value });
     }
   };
-  const handlePhotoChange = (e, photoType) => {
-    const file = e.target.files?.[0];
+  //   const handlePhotoChange = (e, photoType) => {
+  //     const file = e.target.files?.[0];
 
-    if (file) {
-      setCurrentPhotoType(photoType);
-      setValues((prev) => ({ ...prev, [photoType]: file }));
-    }
-  };
+  //     if (file) {
+  //       setCurrentPhotoType(photoType);
+  //       setValues((prev) => ({ ...prev, [photoType]: file }));
+  //     }
+  //   };
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -565,21 +568,38 @@ console.log("values",values)
       );
       setCroppedImageSource(null);
 
-      switch (currentPhotoType) {
-        case "fatherImage":
-          setValues((prev) => ({ ...prev, fatherImage: croppedImageUrl }));
-          break;
-        case "motherImage":
-          setValues((prev) => ({ ...prev, motherImage: croppedImageUrl }));
-          break;
-        case "guardianImage":
-          setValues((prev) => ({ ...prev, guardianImage: croppedImageUrl }));
-          break;
-        default:
-          setValues((prev) => ({ ...prev, studentImage: croppedImageUrl }));
-          break;
-      }
-      setCurrentPhotoType(null);
+      // Function to convert image URL to Base64
+      const getBase64FromUrl = async (url) => {
+        const data = await fetch(url);
+        const blob = await data.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = () => {
+            const base64data = reader.result;
+            resolve(base64data);
+          };
+        });
+      };
+
+      // Convert cropped image to Base64 and update state
+      getBase64FromUrl(croppedImageUrl).then((base64Image) => {
+        switch (currentPhotoType) {
+          case "fatherImage":
+            setValues((prev) => ({ ...prev, fatherImage: base64Image }));
+            break;
+          case "motherImage":
+            setValues((prev) => ({ ...prev, motherImage: base64Image }));
+            break;
+          case "guardianImage":
+            setValues((prev) => ({ ...prev, guardianImage: base64Image }));
+            break;
+          default:
+            setValues((prev) => ({ ...prev, studentImage: base64Image }));
+            break;
+        }
+        setCurrentPhotoType(null);
+      });
     } catch (error) {
       console.error("Error cropping image:", error);
     }
@@ -670,15 +690,14 @@ console.log("values",values)
                 </div>
                 <div className="flex ml-2 mb-6">
                   <div className="absolute top-5">
+                    {console.log("values?.studentImage",values?.studentImage)}
                     {values?.studentImage ? (
                       <img
                         src={
                           values.studentImage instanceof File
                             ? URL.createObjectURL(values.studentImage)
-                            :  values.studentImage?.url 
-                           
+                            : values.studentImage
                         }
-                       
                         alt="studentImage"
                         className="w-20 h-20 rounded-full object-cover"
                       />
@@ -693,7 +712,7 @@ console.log("values",values)
                         type="file"
                         className="hidden"
                         accept="image/*"
-                        onChange={handleImageChange}
+                        onChange={(e) => handleImageChange(e, "studentImage")}
                       />
                     </label>
                   </div>
@@ -701,7 +720,6 @@ console.log("values",values)
               </div>
               <div class="px-6 pb-8 bg-white rounded-tr-4xl ">
                 <form class="" action="" method="POST">
-                 
                   <div class="relative mt-4">
                     <input
                       type="text"
@@ -716,7 +734,7 @@ console.log("values",values)
                       for="fullName"
                       class="absolute left-0 -top-3.5 text-[#ee582c] text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-[#ee582c] peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-[#ee582c] peer-focus:text-sm"
                     >
-                    Student Name
+                      Student Name
                     </label>
                   </div>
                   <div class="relative mt-4">
@@ -859,25 +877,15 @@ console.log("values",values)
                       console.log("values?.dateOfBirth",values?.dateOfBirth)
                     }
                     <div class="relative mt-4 w-full">
-                    {/* <input
-  type="date"
-  name="DOB"
-  placeholder="Enter DOB"
-  value={(values?.dateOfBirth ? moment(values?.dateOfBirth).format("YYYY-MM-DD") : values?.DOB )}
-  onChange={handleInputChange}
-  id="DOB"
-  className="peer h-10 w-full border-b-2 border-[#ee582c] text-[#2fa7db] placeholder-transparent focus:outline-none focus:border-rose-600"
-/> */}
-
-<input
-        type="date"
-        name="dateOfBirth"
-        placeholder="Enter DOB (YYYY-MM-DD)"
-        value={values.dateOfBirth}
-        onChange={handleInputChange}
-        id="DOB"
-        className="peer h-10 w-full border-b-2 border-[#ee582c] text-[#2fa7db] placeholder-gray-400 focus:outline-none focus:border-rose-600"
-      />      
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        placeholder="Enter DOB (YYYY-MM-DD)"
+                        value={values.dateOfBirth}
+                        onChange={handleInputChange}
+                        id="DOB"
+                        className="peer h-10 w-full border-b-2 border-[#ee582c] text-[#2fa7db] placeholder-gray-400 focus:outline-none focus:border-rose-600"
+                      />
                       <label
                         for="DOB"
                         class="absolute left-0 -top-3.5 text-[#ee582c] text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-[#ee582c] peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-[#ee582c] peer-focus:text-sm"
@@ -886,13 +894,8 @@ console.log("values",values)
                       </label>
                     </div>
                   </div>
-                  
-
-
-
 
                   <div className="flex justify-center items-center gap-2 w-full mt-4">
-                    
                     <div class="relative w-full">
                       <input
                         maxLength="3"
@@ -912,29 +915,25 @@ console.log("values",values)
                       </label>
                     </div>
                     <div class="relative  w-full">
-                    <input
-                      type="text"
-                      maxlength="10"
-                      name="contact"
-                      placeholder="Contact No."
-                      value={values?.contact}
-                      onChange={handleInputChange}
-                      id="contact"
-                      pattern="[0-9]*" 
-                      className="peer h-10 w-full border-b-2 border-[#ee582c] text-[#2fa7db] placeholder-transparent focus:outline-none focus:border-rose-600"
-                    />
-                    <label
-                      for="contact"
-                      class="absolute left-0 -top-3.5 text-[#ee582c] text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-[#ee582c] peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-[#ee582c] peer-focus:text-sm"
-                    >
-                      Contact No.
-                    </label>
+                      <input
+                        type="text"
+                        maxlength="10"
+                        name="contact"
+                        placeholder="Contact No."
+                        value={values?.contact}
+                        onChange={handleInputChange}
+                        id="contact"
+                        pattern="[0-9]*"
+                        className="peer h-10 w-full border-b-2 border-[#ee582c] text-[#2fa7db] placeholder-transparent focus:outline-none focus:border-rose-600"
+                      />
+                      <label
+                        for="contact"
+                        class="absolute left-0 -top-3.5 text-[#ee582c] text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-[#ee582c] peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-[#ee582c] peer-focus:text-sm"
+                      >
+                        Contact No.
+                      </label>
+                    </div>
                   </div>
-                  </div>
-
-
-
-                 
                   <div class="relative mt-4">
                     <input
                       type="text"
@@ -1089,7 +1088,7 @@ console.log("values",values)
                     src={
                       values.fatherImage instanceof File
                       ? URL.createObjectURL(values.fatherImage)
-                      :  values.fatherImage?.url 
+                      :  values.fatherImage
                      
                     }
                     alt="mother Image"
@@ -1107,7 +1106,7 @@ console.log("values",values)
                     className="hidden"
                     accept="image/*"
                     name="fatherImage"
-                    onChange={(e) => handlePhotoChange(e, "fatherImage")}
+                    onChange={(e) => handleImageChange(e, "fatherImage")}
                   />
                 </label>
               </div>
@@ -1125,7 +1124,7 @@ console.log("values",values)
                     src={
                       values.motherImage instanceof File
                       ? URL.createObjectURL(values.motherImage)
-                      :  values.motherImage?.url 
+                      :  values.motherImage 
                     
                     }
                    
@@ -1144,7 +1143,7 @@ console.log("values",values)
                     className="hidden"
                     accept="image/*"
                     name="motherImage"
-                    onChange={(e) => handlePhotoChange(e, "motherImage")}
+                    onChange={(e) => handleImageChange(e, "motherImage")}
                   />
                 </label>
               </div>
@@ -1164,7 +1163,7 @@ console.log("values",values)
                     src={
                       values.guardianImage instanceof File
                       ? URL.createObjectURL(values.guardianImage)
-                      :  values.guardianImage?.url 
+                      :  values.guardianImage 
                      
                     }
                   
@@ -1183,7 +1182,7 @@ console.log("values",values)
                     className="hidden"
                     accept="image/*"
                     name="guardianImage"
-                    onChange={(e) => handlePhotoChange(e, "guardianImage")}
+                    onChange={(e) => handleImageChange(e, "guardianImage")}
                   />
                 </label>
               </div>
